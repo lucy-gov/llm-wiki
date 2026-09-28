@@ -1,0 +1,3 @@
+# Additional identifiers to block from the main wiki, one per line: nicknames,
+# former names, and third parties named in interviews. Rebuild the denylist
+# after editing (scripts/build-denylist.py).

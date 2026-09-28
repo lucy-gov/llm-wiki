@@ -1,0 +1,3 @@
+# The tools pin. Bump deliberately, in its own commit, together
+# with `rev` in .pre-commit-config.yaml.
+llm-wiki @ git+{{tools_url}}@{{tools_rev}}

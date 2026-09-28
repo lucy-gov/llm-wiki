@@ -1,0 +1,13 @@
+# Derived, disposable, or scratch. The pre-commit hook blocks these paths even
+# if this file is edited or a file is force-added.
+/cache/
+/staging/
+/quarantine/
+/exports/
+/raw/attachments/
+/.venv/
+
+# Local
+.DS_Store
+.env
+.obsidian/workspace*.json

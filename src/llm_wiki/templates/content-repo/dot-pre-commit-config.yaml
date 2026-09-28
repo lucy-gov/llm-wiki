@@ -1,0 +1,8 @@
+# Leak-prevention hooks. `rev` must match the pin in requirements.txt.
+# Install with: pre-commit install --hook-type pre-commit --hook-type commit-msg
+repos:
+  - repo: {{tools_url}}
+    rev: {{tools_rev}}
+    hooks:
+      - id: llm-wiki-content
+      - id: llm-wiki-commit-msg

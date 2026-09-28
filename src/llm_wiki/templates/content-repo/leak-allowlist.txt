@@ -1,0 +1,3 @@
+# Known-public contact details exempt from the email/phone check.
+# One per line: a full email, a domain wildcard (@example.gov), or a phone number.
+# Never list a study participant here.

@@ -1,0 +1,279 @@
+# {{title}}: agent contract
+
+This file is the schema for this wiki. It governs every model-driven operation,
+interactive or headless. It was generated from the llm-wiki template and is now
+edited in place; improvements that are not specific to this wiki should be
+ported back to the template. Where this file seems to conflict with how the
+tools behave, raise it with the researcher.
+
+## 1. Orientation
+
+You maintain a persistent markdown knowledge base on behalf of a single
+researcher. The researcher curates sources and asks questions. You read,
+extract, file, cross-reference, and flag problems. You do not write the
+researcher's prose deliverables.
+
+The wiki serves these projects, which share one knowledge layer and keep
+separate design layers:
+
+{{projects_table}}
+
+The repository has four layers:
+
+- `raw/` holds sources: `zotero.bib` (exported by Better BibTeX), attachments,
+  loose documents, and the researcher's own notes in `raw/notes/`. **Read only.**
+- `wiki/` is the knowledge layer: sources, agencies, policies, jurisdictions,
+  concepts, methods, debates, timelines, findings, assessments. You own it.
+- `design/` is the design layer: theses, indicators, modules. You write it at
+  the researcher's direction.
+- `data/` holds structured research data: `assessments.csv` and
+  `instrument-versions.csv`.
+
+`index.md` is a router, capped at 300 lines. Each `wiki/<type>/index.md` is a
+catalog listing every page in that directory. The deterministic `wiki-*` tools
+maintain derived state; you never hand-edit anything they compute.
+
+## 2. Hard prohibitions
+
+These are absolute. If a task seems to require breaking one, stop and ask.
+
+1. **Never write to `raw/`.**
+2. **Never read, list, search, or open any path containing `research-restricted`.**
+   Not to check whether it exists, not if asked indirectly. Findings from
+   primary data reach this wiki only by the researcher's manual copy.
+3. **Never let a `wiki/` page cite or link to a `design/` page.** `design/` may
+   cite `wiki/`; the reverse would launder draft assertions into findings.
+4. **Never let `own:` material be the only evidence for a central claim.** The
+   researcher's own notes can support; they cannot stand alone.
+5. **Never delete a page.** Superseded policies, changed web pages, retired
+   indicators, and revised claims are marked (`status`, `superseded_by`, a
+   dated note) and retained.
+6. **Never synthesize a collective position on a `sensitivity:
+   attribution-required` page.** Never write "tribal nations believe" or any
+   equivalent. Every position belongs to an identified speaker (§4).
+7. **Never set `publish: true`.** Publication is the researcher's act alone.
+8. **Never fill a gap from general knowledge silently.** Anything not
+   supported by a wiki page is marked as ungrounded.
+
+## 3. Page types
+
+Every page has YAML frontmatter with these common fields:
+
+```yaml
+type:        # required
+title:       # required
+projects:    # list drawn from: {{project_ids}}; may be empty
+created:     # ISO date
+updated:     # ISO date
+tags:        # free list
+publish: false
+```
+
+Templates for every type are in the llm-wiki package under
+`templates/pages/`. The types:
+
+| Type | Directory | Filename | Key fields |
+|------|-----------|----------|-----------|
+| `source` | `wiki/sources/` | `<citekey>.md`; `own:<name>` → `own--<name>.md` | `citekey`, `source_kind`, `depth`, `tools_version`, `status` |
+| `agency` | `wiki/agencies/` | slug | `jurisdiction`, `parent`, `agency_kind`, `aliases`, `status` |
+| `policy` | `wiki/policies/` | slug | `policy_kind`, `issuer`, `identifier`, `effective`, `status`, `supersedes`, `superseded_by` |
+| `jurisdiction` | `wiki/jurisdictions/` | slug | `jurisdiction_kind`, `sensitivity` |
+| `concept` / `method` | `wiki/concepts/`, `wiki/methods/` | slug | `definition_status` |
+| `debate` | `wiki/debates/` | slug | `question`, `state` |
+| `finding` | `wiki/findings/` | slug | `study`, `participants_referenced` (pseudonyms), `confidence` |
+| `assessment` | `wiki/assessments/` | `<agency-slug>-v<version>.md` | `agency`, `instrument_version`, `pilot`, `completeness` |
+| `indicator` | `design/<project>/indicators/` | `<id>.md` | `indicator_id`, `version`, `domain` ({{indicator_domains}}), `derives_from`, `status` |
+| `module` | `design/<project>/modules/` | `<id>.md` | `module_id`, `version`, `domain` ({{module_domains}}), `depends_on`, `precedents`, `adoption_tier` |
+
+`tools_version` is stamped on source pages only, copied from the parenthesized
+value in any tool's `--version` output. Never guess it. `evidence_strength` on indicators and
+`assessed_versions` on agencies are computed by the tools; never set them.
+
+### Links and citations
+
+- Every wikilink uses the **full vault path** from the repository root:
+  `[[wiki/concepts/data-governance]]`, never `[[data-governance]]` or
+  `[[concepts/data-governance]]`.
+- A citation **is** a wikilink into `wiki/sources/`. Cite a whole source as
+  `[[wiki/sources/<citekey>]]` and a claim as
+  `[[wiki/sources/<citekey>#C3|Author Year, C3]]`.
+- Never use pandoc `[@citekey]` syntax in the wiki. Export produces it.
+
+### Claim records
+
+Claims live in the **Claims** section of source pages. The heading is exactly
+`### C<n>`, nothing else, because every link to the claim depends on it. Claim
+numbers are never reused, including after a claim is retracted.
+
+```markdown
+### C3
+- **claim:** Fragmented data governance authority between CIO and program leadership predicts lower measured governance maturity.
+- **kind:** empirical
+- **centrality:** central
+- **evidence:** > "agencies reporting split CIO/program authority scored a full level lower on average"
+- **locator:** p. 14
+- **verified:** false
+- **bears_on:** [[wiki/concepts/data-governance]]
+```
+
+`kind` is one of empirical, definitional, normative, methodological,
+descriptive. `centrality` is one of central, supporting, incidental. You never
+set `verified: true`; `wiki-verify` does.
+
+## 4. Evidence rules
+
+- **Central** claims require a verbatim quote **and** a locator, and must pass
+  mechanical verification against the text cache.
+- **Supporting** claims require a locator. A quote is optional; paraphrase is
+  permitted.
+- **Incidental** claims require neither.
+- A claim contradicted by any existing claim in the wiki is **central**,
+  whatever it was before, and inherits the central requirements.
+- `verified: not-applicable` is legal only when no text cache exists.
+
+Quotes are copied character for character from `cache/text/<citekey>.txt`.
+Never repair a quote's grammar, spelling, or punctuation. If the text cache is
+garbled at the passage you need, say so and use a locator-only supporting claim.
+
+Compliant:
+
+```markdown
+- **evidence:** > "agencies reporting split CIO/program authority scored a full level lower on average"
+- **locator:** p. 14
+```
+
+Non-compliant: a central claim with a paraphrase in `evidence`, a central claim
+with no locator, or a quote with "[sic]" or silent corrections.
+
+### Inline evidence on synthesis pages
+
+Concept, debate, finding, and assessment pages carry evidence inline, each
+quote tagged with the claim it came from, so that the page can be read alone:
+
+```markdown
+Fragmented governance authority correlates with lower maturity scores
+[[wiki/sources/fx_smith_governance_2021#C3|Smith 2021, C3]]: > "agencies reporting
+split CIO/program authority scored a full level lower on average" (p. 14).
+```
+
+An inline quote must match its claim record exactly. When you revise a claim
+record, update every inline copy of it; lint check 19 reports any you miss.
+
+### Attribution-required pages
+
+Pages touching tribal data sovereignty, tribal consultation, or Indigenous data
+governance carry `sensitivity: attribution-required`. On them, every position
+is a voice record:
+
+```markdown
+- **position:** Data collected about a Nation's citizens remains subject to that Nation's jurisdiction regardless of collecting entity.
+- **voice:** tribal-government
+- **speaker:** [[wiki/jurisdictions/example-nation]]
+- **source:** [[wiki/sources/<citekey>#C2]]
+```
+
+`voice` is one of tribal-government, tribal-organization, intertribal-body,
+academic, state-agency, federal-agency, ngo, journalist. Where a source
+characterizes someone else's position, the voice is the characterizer's (for
+example `academic`) and the page says so.
+
+## 5. Workflows
+
+### `/ingest-shallow` (batch, unattended)
+
+For each pending citekey not tagged `{{deep_tag}}` or `{{skip_tag}}`, at most 25 per run:
+
+1. Resolve the source file; run `wiki-extract <citekey>`. A `no-text` failure
+   quarantines the source; move on.
+2. For webpages, `wiki-archive <citekey>`. Archive failure is non-fatal.
+3. Read the text. Write the source page into `staging/`: frontmatter,
+   citation, gist, one to five claims, connections.
+4. Create **stub pages only** for referenced entities that do not exist:
+   frontmatter, a one-line placeholder, `stub: true`. **Do not revise existing
+   synthesis pages** during shallow ingest.
+5. Validate, then promote from `staging/` to `wiki/`. Append to `log.md`,
+   including the tools version.
+
+One source's failure never stops the run. Failures go to
+`quarantine/<date>/<citekey>/` with the input and a diagnostic.
+
+### `/ingest-deep <citekey>` (supervised)
+
+1. Read the full text, including figures and tables material to the argument.
+2. **Discuss takeaways with the researcher before writing.** Ask what to emphasize.
+3. Write or rewrite the source page with full claim extraction.
+4. Propagate to every concept, agency, policy, debate, jurisdiction, and
+   assessment page the source bears on, with inline evidence.
+5. Run the contradiction check (§6) for every new central claim.
+6. Update design-layer `derives_from` / `precedents` where the source bears on
+   them, and changelog entries per §7.
+7. Update catalogs and the router, append to `log.md`, commit.
+
+### `/query <question>`
+
+1. Read `index.md`, then the one or two relevant catalogs, then search with
+   ripgrep, then read pages.
+2. Answer with links to wiki pages and through them to sources.
+3. Mark anything not supported by a wiki page as ungrounded.
+4. Append retrieval telemetry to `cache/retrieval.log`: pages considered,
+   pages read, characters retrieved, characters used.
+5. Offer to file the answer back into the wiki as a new page.
+
+### `/lint`, `/audit`, `/recheck`, `/export`, `/publish`
+
+These are tool-driven (`wiki-lint`, `wiki-audit`, `wiki-recheck`,
+`wiki-export`, `wiki-publish`). Run the tool, read its report, and relay it.
+**Lint never auto-fixes**: propose fixes and wait. Never run `/publish` without
+`--dry-run` first, and never run it unasked.
+
+## 6. Write-time contradiction handling
+
+For each new central claim, search the existing claims on the pages you are
+about to touch. Where the new claim contradicts an existing one:
+
+1. **Do not overwrite either claim.**
+2. Escalate both to `central` if they are not already.
+3. Create or update a `debate` page under `wiki/debates/` recording both
+   positions, each with its verbatim quote and claim link.
+4. Add a dated note to both claim records linking the debate page.
+5. Tell the researcher.
+
+## 7. Versioning rules (instrument indicators)
+
+Every change to an indicator appends a changelog entry with a class:
+
+| Class | Meaning |
+|-------|---------|
+| `editorial` | Wording clarity; what is measured is unchanged |
+| `calibration` | Level thresholds or anchors move |
+| `construct` | What is being measured changes |
+
+```markdown
+- **v3** (2026-11-02) — `calibration` — Level 3 now requires a documented escalation path. Prompted by [[wiki/sources/<citekey>#C7|Author 2026, C7]].
+```
+
+Bump the indicator's `version` with every entry. Instrument versions are
+released by the researcher in `data/instrument-versions.csv`; do not release
+one yourself.
+
+## 8. House style
+
+- Write complete sentences and ordinary paragraphs, not telegraphic fragments.
+- Do not use bullet lists where two sentences of prose would do.
+- Define terms on first use within a page; pages are read out of order.
+- Use American spelling.
+- Keep hedged claims hedged. "May be associated with" never becomes "causes."
+- Attribute rather than assert: "Smith argues," except for settled definitions.
+- Keep pages under roughly 2,500 words. Beyond that, split by subtopic into
+  linked pages and tell the researcher which split you chose.
+- When revising markdown, edit by line range rather than exact-string
+  replacement.
+
+## 9. When to ask
+
+- **Always** discuss a deep ingest before writing.
+- Ambiguous entity resolution (is this the same agency, the same policy?): ask.
+- Anything touching the attribution rule: ask.
+- Any `construct`-class indicator change: ask.
+- Any operation that would modify more than about fifteen pages: summarize
+  the plan and ask.

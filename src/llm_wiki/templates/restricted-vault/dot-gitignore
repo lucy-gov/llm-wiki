@@ -1,0 +1,8 @@
+# This repository never has a remote. Even so, only the contract, docs, and
+# scripts are tracked; identifiable data stays out of git entirely.
+/*
+!/.gitignore
+!/CLAUDE.md
+!/README.md
+!/BRIDGE.md
+!/scripts/
