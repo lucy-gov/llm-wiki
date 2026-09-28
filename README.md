@@ -5,7 +5,9 @@ This repository holds code, templates, and synthetic test fixtures only. The wik
 
 ## Status
 
-Early development. Available now: `wiki-init` and the leak-prevention hooks. The ingest, verification, lint, index, export, and publishing tools are in progress.
+Early development. Available now: `wiki-init`, the leak-prevention hooks, and the read path: `wiki-bib`, `wiki-extract`, `wiki-links`, and `wiki-index`. The ingest, verification, lint, export, and publishing tools are in progress.
+
+OCR for image-only PDFs needs [`ocrmypdf`](https://ocrmypdf.readthedocs.io/) on `PATH` (`brew install ocrmypdf`); without it, `wiki-extract` reports such PDFs as `no-text`.
 
 ## Instantiating a wiki
 
