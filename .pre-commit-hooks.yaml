@@ -1,0 +1,21 @@
+# Hooks consumed by the content repository. They read staged content
+# from the git index themselves, so pre-commit's file list is ignored.
+- id: llm-wiki-content
+  name: llm-wiki leak prevention (rules 1-5)
+  entry: wiki-hook-content
+  language: python
+  pass_filenames: false
+  always_run: true
+  stages: [pre-commit]
+- id: llm-wiki-commit-msg
+  name: llm-wiki .gitignore change marker (rule 6)
+  entry: wiki-hook-commit-msg
+  language: python
+  stages: [commit-msg]
+- id: llm-wiki-tools
+  name: llm-wiki tools-repo guard
+  entry: wiki-hook-tools
+  language: python
+  pass_filenames: false
+  always_run: true
+  stages: [pre-commit]
