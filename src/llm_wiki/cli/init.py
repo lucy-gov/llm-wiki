@@ -1,9 +1,11 @@
 """wiki-init: scaffold a content repository or the restricted vault.
 
 The one tool permitted to write outside the repository it was invoked from,
-since its job is to create a new one. It refuses to write into a non-empty
-directory or inside an existing git repository, and it never reads the
-restricted vault: ``--restricted`` only writes the scaffold.
+since its job is to create a new one. The target must be absent, an empty
+directory, or (content repo only) the root of an existing git repository such
+as a fresh clone; in that last case existing files are never overwritten, only
+reported. It never reads the restricted vault: ``--restricted`` only writes
+the scaffold.
 """
 
 from __future__ import annotations
@@ -58,7 +60,37 @@ def render(text: str, values: dict[str, str]) -> str:
     return text
 
 
-def copy_tree(src: Path, dest: Path, values: dict[str, str]) -> None:
+class Writer:
+    """Writes scaffold files, skipping any that already exist."""
+
+    def __init__(self, root: Path) -> None:
+        self.root = root
+        self.skipped: list[str] = []
+
+    def _claim(self, target: Path) -> bool:
+        if target.exists():
+            self.skipped.append(str(target.relative_to(self.root)))
+            return False
+        target.parent.mkdir(parents=True, exist_ok=True)
+        return True
+
+    def text(self, target: Path, content: str, *, executable: bool = False) -> None:
+        if self._claim(target):
+            target.write_text(content, encoding="utf-8")
+            if executable:
+                target.chmod(0o755)
+
+    def copy(self, src: Path, target: Path) -> None:
+        if self._claim(target):
+            shutil.copyfile(src, target)
+
+    def touch(self, target: Path) -> None:
+        if not target.exists():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.touch()
+
+
+def copy_tree(src: Path, dest: Path, values: dict[str, str], out: Writer) -> None:
     """Copy a template tree, renaming ``dot-x`` to ``.x`` and rendering text files.
 
     Templates store dotfiles as ``dot-*`` so that, for example, the restricted
@@ -72,14 +104,10 @@ def copy_tree(src: Path, dest: Path, values: dict[str, str]) -> None:
         target = dest / rel
         if path.is_dir():
             target.mkdir(parents=True, exist_ok=True)
-            continue
-        target.parent.mkdir(parents=True, exist_ok=True)
-        if path.suffix in {".md", ".txt", ".yaml", ".csv", ".py"} or path.name.startswith("dot-"):
-            target.write_text(render(path.read_text(encoding="utf-8"), values), encoding="utf-8")
+        elif path.suffix in {".md", ".txt", ".yaml", ".csv", ".py"} or path.name.startswith("dot-"):
+            out.text(target, render(path.read_text(encoding="utf-8"), values), executable=path.suffix == ".py")
         else:
-            shutil.copyfile(path, target)
-        if path.suffix == ".py":
-            target.chmod(0o755)
+            out.copy(path, target)
 
 
 def load_config(path: Path) -> dict[str, Any]:
@@ -112,16 +140,23 @@ def load_config(path: Path) -> dict[str, Any]:
     return config
 
 
-def _refuse_unsafe_target(target: Path) -> None:
-    if target.exists() and any(target.iterdir()):
-        raise WikiError(f"{target} exists and is not empty")
+def _prepare_target(target: Path, *, allow_existing_repo: bool) -> bool:
+    """Validate the target directory. Returns True when it still needs ``git init``."""
     probe = target if target.exists() else target.parent
     inside = subprocess.run(
         ["git", "-C", str(probe), "rev-parse", "--show-toplevel"],
         capture_output=True, text=True,
     )
-    if inside.returncode == 0:
-        raise WikiError(f"{target} is inside the git repository at {inside.stdout.strip()}; choose a location outside it")
+    toplevel = Path(inside.stdout.strip()).resolve() if inside.returncode == 0 else None
+    if toplevel == target.resolve():
+        if not allow_existing_repo:
+            raise WikiError(f"{target} is already a git repository; the restricted vault must be created fresh")
+        return False
+    if target.exists() and any(target.iterdir()):
+        raise WikiError(f"{target} exists and is not empty")
+    if toplevel is not None:
+        raise WikiError(f"{target} is inside the git repository at {toplevel}; choose a location outside it")
+    return True
 
 
 def _git_init(target: Path) -> None:
@@ -132,7 +167,8 @@ def _codes(values: list[str]) -> str:
     return ", ".join(f"`{v}`" for v in values) or "(none configured)"
 
 
-def init_content(target: Path, config_path: Path, tools_url: str, tools_rev: str) -> None:
+def init_content(target: Path, config_path: Path, tools_url: str, tools_rev: str) -> list[str]:
+    """Scaffold a content repo. Returns the paths skipped because they already existed."""
     config = load_config(config_path)
     projects = config["projects"]
     today = dt.date.today().isoformat()
@@ -156,38 +192,40 @@ def init_content(target: Path, config_path: Path, tools_url: str, tools_rev: str
         "skip_tag": config["tags"]["skip"],
     }
 
-    _refuse_unsafe_target(target)
+    needs_init = _prepare_target(target, allow_existing_repo=True)
+    if config_path.resolve() == (target / "wiki.toml").resolve():
+        raise WikiError("pass a config file outside the target; wiki-init copies it to wiki.toml")
     target.mkdir(parents=True, exist_ok=True)
-    copy_tree(templates() / "content-repo", target, values)
+    out = Writer(target)
+    copy_tree(templates() / "content-repo", target, values, out)
     claude_md = (templates() / "CLAUDE.md.template").read_text(encoding="utf-8")
-    (target / "CLAUDE.md").write_text(render(claude_md, values), encoding="utf-8")
-    shutil.copyfile(config_path, target / "wiki.toml")
+    out.text(target / "CLAUDE.md", render(claude_md, values))
+    out.copy(config_path, target / "wiki.toml")
 
     for d in CONTENT_DIRS:
-        (target / d).mkdir(parents=True, exist_ok=True)
-        (target / d / ".gitkeep").touch()
+        out.touch(target / d / ".gitkeep")
     for d in WIKI_DIRS:
-        (target / "wiki" / d).mkdir(parents=True, exist_ok=True)
-        (target / "wiki" / d / "index.md").write_text(
+        out.text(
+            target / "wiki" / d / "index.md",
             f"# {d.capitalize()}\n\nCatalog regenerated by `wiki-index`. Do not edit by hand.\n",
-            encoding="utf-8",
         )
     for p in projects:
         design = target / "design" / p["design_dir"]
-        design.mkdir(parents=True, exist_ok=True)
-        (design / "thesis.md").write_text(f"# {p['id']}: {p['name']}\n\nThesis to be drafted.\n", encoding="utf-8")
-        (design / "open-questions.md").write_text(f"# {p['id']}: open questions\n", encoding="utf-8")
-    (target / "data" / "assessments.csv").write_text(ASSESSMENTS_HEADER, encoding="utf-8")
-    (target / "data" / "instrument-versions.csv").write_text(INSTRUMENT_HEADER, encoding="utf-8")
-    _git_init(target)
+        out.text(design / "thesis.md", f"# {p['id']}: {p['name']}\n\nThesis to be drafted.\n")
+        out.text(design / "open-questions.md", f"# {p['id']}: open questions\n")
+    out.text(target / "data" / "assessments.csv", ASSESSMENTS_HEADER)
+    out.text(target / "data" / "instrument-versions.csv", INSTRUMENT_HEADER)
+    if needs_init:
+        _git_init(target)
+    return out.skipped
 
 
 def init_restricted(target: Path) -> None:
     if RESTRICTED_MARKER not in target.name:
         raise WikiError(f"the restricted vault's directory name must contain {RESTRICTED_MARKER!r}, so every tool's path guard recognizes it")
-    _refuse_unsafe_target(target)
+    _prepare_target(target, allow_existing_repo=False)
     target.mkdir(parents=True, exist_ok=True)
-    copy_tree(templates() / "restricted-vault", target, {})
+    copy_tree(templates() / "restricted-vault", target, {}, Writer(target))
     _git_init(target)
 
 
@@ -212,8 +250,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     tools_rev = args.tools_rev or pinnable_commit()
     if not tools_rev:
         raise WikiError("the running llm-wiki has uncommitted changes, so there is no commit to pin; pass --tools-rev")
-    init_content(target, config_path, args.tools_url or default_tools_url(), tools_rev)
+    skipped = init_content(target, config_path, args.tools_url or default_tools_url(), tools_rev)
     print(f"Content repository scaffolded at {target}, pinned to llm-wiki {tools_rev[:7]}.")
+    for path in skipped:
+        print(f"  kept existing {path}; compare it with the template and merge by hand")
     print("Next: create the venv, `pip install -r requirements.txt`, and install the hooks (see README.md).")
     print("The pinned commit must be pushed to the tools remote before pip or pre-commit can fetch it.")
     return 0

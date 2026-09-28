@@ -68,3 +68,29 @@ def test_config_validation(tmp_path):
     bad.write_text('[[projects]]\nid = "P1"\nname = "x"\nkind = "y"\ndesign_dir = "z"\n')
     with pytest.raises(WikiError, match="lowercase"):
         init.load_config(bad)
+
+def test_scaffolds_into_existing_clone_without_overwriting(tmp_path):
+    target = tmp_path / "clone"
+    target.mkdir()
+    subprocess.run(["git", "init", "-q", str(target)], check=True)
+    (target / "README.md").write_text("mine\n")
+    (target / ".gitignore").write_text("/cache/\n")
+
+    skipped = init.init_content(target, CONFIG, "https://example.invalid/llm-wiki", SHA)
+
+    assert sorted(skipped) == [".gitignore", "README.md"]
+    assert (target / "README.md").read_text() == "mine\n"
+    assert (target / "CLAUDE.md").exists()
+
+
+def test_nested_path_inside_clone_refused(tmp_path):
+    subprocess.run(["git", "init", "-q", str(tmp_path / "clone")], check=True)
+    with pytest.raises(WikiError, match="inside the git repository"):
+        init.init_content(tmp_path / "clone" / "sub", CONFIG, "u", SHA)
+
+
+def test_restricted_vault_refuses_existing_repo(tmp_path):
+    target = tmp_path / "research-restricted"
+    subprocess.run(["git", "init", "-q", str(target)], check=True)
+    with pytest.raises(WikiError, match="created fresh"):
+        init.init_restricted(target)
