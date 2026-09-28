@@ -14,6 +14,20 @@ pre-commit install --hook-type pre-commit --hook-type commit-msg
 Open this directory as an Obsidian vault with wikilinks on and "New link format"
 set to "Absolute path in vault".
 
+## Upgrading the tools
+
+Change the commit in `requirements.txt` and `rev` in `.pre-commit-config.yaml`
+together, then reinstall. pip treats a new commit with the same package version
+as already installed, so force the tools reinstall:
+
+```sh
+pip install --force-reinstall --no-deps "$(grep '^llm-wiki' requirements.txt)"
+pip install -r requirements.txt
+wiki-bib --version   # should show the new short SHA, without -dirty
+```
+
+Commit the pin bump on its own.
+
 ## Layout
 
 - `raw/` — immutable sources. Read, never written.
