@@ -1,0 +1,33 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "llm-wiki"
+version = "0.1.0"
+description = "Tools for an LLM-maintained research wiki: Zotero-backed ingest, mechanical quote verification, provenance linting, and instrument versioning over plain markdown."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+authors = [{ name = "Lucy Andrews" }]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/lucy-gov/llm-wiki"
+
+[project.scripts]
+wiki-init = "llm_wiki.cli.init:cli"
+wiki-hook-content = "llm_wiki.hooks.content:main"
+wiki-hook-commit-msg = "llm_wiki.hooks.commit_msg:main"
+wiki-hook-tools = "llm_wiki.hooks.tools_repo:main"
+
+[dependency-groups]
+dev = ["pytest", "pre-commit"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/llm_wiki"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"

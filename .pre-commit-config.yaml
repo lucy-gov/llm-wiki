@@ -1,0 +1,19 @@
+# This repository's own hooks. The hook code is stdlib-only, so it
+# runs straight from the checkout rather than from an installed copy, which
+# means a change to the hook takes effect on the commit that makes it.
+# Install with: pre-commit install --hook-type pre-commit --hook-type commit-msg
+repos:
+  - repo: local
+    hooks:
+      - id: llm-wiki-tools
+        name: llm-wiki tools-repo guard
+        entry: env PYTHONPATH=src python3 -m llm_wiki.hooks.tools_repo
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+      - id: llm-wiki-commit-msg
+        name: llm-wiki .gitignore change marker
+        entry: env PYTHONPATH=src python3 -m llm_wiki.hooks.commit_msg
+        language: system
+        stages: [commit-msg]
