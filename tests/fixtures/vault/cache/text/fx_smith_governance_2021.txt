@@ -1,0 +1,3 @@
+Split Authority and Data Governance Maturity
+
+Across the sample, agencies reporting split CIO/program authority scored a full level lower on average than agencies with a single accountable data lead.

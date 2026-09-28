@@ -1,0 +1,26 @@
+# Instance configuration for this wiki. Tools read this file; nothing
+# project-specific is hard-coded in llm-wiki.
+# `wiki-init --config <file>` uses a filled-in copy of this file to generate
+# CLAUDE.md once; CLAUDE.md is then edited in place.
+
+[wiki]
+title = "Fixture Wiki"
+owner = ""
+
+# One table per project. `id` is the Zotero tag and the value used in page
+# frontmatter `projects:` lists. `design_dir` is the directory under design/.
+[[projects]]
+id = "p1"
+name = "Synthetic maturity instrument"
+kind = "Measurement / instrument construction"
+design_dir = "p1-example"
+
+# Zotero tags with fixed meanings. Project IDs above are also tags.
+[tags]
+deep = "deep"
+skip = "skip"
+
+# Allowed values for `domain:` on indicator and module pages.
+[design]
+indicator_domains = ["literacy", "governance", "capacity"]
+module_domains = ["data-governance", "ai-governance", "open-data", "procurement", "workforce"]
