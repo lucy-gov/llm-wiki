@@ -216,3 +216,23 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Research content must never enter this repository.
+# Anchored to the repo root so the synthetic fixture vault under
+# tests/fixtures/ can be committed. The hook enforces the same rule.
+/wiki/
+/design/
+/data/
+/raw/
+/cache/
+/quarantine/
+/staging/
+/exports/
+/lint-reports/
+*.bib
+!tests/fixtures/**/*.bib
+
+# Local
+.DS_Store
+.env
+.obsidian/
