@@ -11,13 +11,21 @@ license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.12"
 authors = [{ name = "Lucy Andrews" }]
-dependencies = []
+dependencies = [
+    "pypdf>=6.19.0",
+    "pyyaml>=6.0.3",
+    "trafilatura>=2.2.0",
+]
 
 [project.urls]
 Repository = "https://github.com/lucy-gov/llm-wiki"
 
 [project.scripts]
 wiki-init = "llm_wiki.cli.init:cli"
+wiki-bib = "llm_wiki.cli.bib:cli"
+wiki-extract = "llm_wiki.cli.extract:cli"
+wiki-links = "llm_wiki.cli.links:cli"
+wiki-index = "llm_wiki.cli.index:cli"
 wiki-hook-content = "llm_wiki.hooks.content:main"
 wiki-hook-commit-msg = "llm_wiki.hooks.commit_msg:main"
 wiki-hook-tools = "llm_wiki.hooks.tools_repo:main"

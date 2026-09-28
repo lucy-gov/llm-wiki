@@ -31,7 +31,17 @@ The repository has four layers:
 
 `index.md` is a router, capped at 300 lines. Each `wiki/<type>/index.md` is a
 catalog listing every page in that directory. The deterministic `wiki-*` tools
-maintain derived state; you never hand-edit anything they compute.
+maintain derived state; you never hand-edit anything they compute:
+
+- `wiki-bib` → `cache/bib.json`: every citekey, plus the `pending`,
+  `promotable`, and `degenerate` sets. Read the queue from here.
+- `wiki-extract <citekey>` → `cache/text/<citekey>.txt` and a `.json` sidecar
+  (extractor, page count, `content_sha256` for webpages).
+- `wiki-links` → `cache/edges.json`: every wikilink and citation, backlinks,
+  orphans, broken links, missing `#C<n>` anchors.
+- `wiki-index` → every `wiki/<type>/index.md`, and the catalog block between
+  the `wiki-index:catalogs` markers in `index.md`. The rest of `index.md` is
+  yours to curate.
 
 ## 2. Hard prohibitions
 
@@ -183,8 +193,9 @@ example `academic`) and the page says so.
 
 For each pending citekey not tagged `{{deep_tag}}` or `{{skip_tag}}`, at most 25 per run:
 
-1. Resolve the source file; run `wiki-extract <citekey>`. A `no-text` failure
-   quarantines the source; move on.
+1. Run `wiki-extract <citekey>`. A failure whose message starts with a reason
+   code (`no-source`, `no-text`, `unreadable`, `unsupported`) quarantines the
+   source under that reason; move on.
 2. For webpages, `wiki-archive <citekey>`. Archive failure is non-fatal.
 3. Read the text. Write the source page into `staging/`: frontmatter,
    citation, gist, one to five claims, connections.
@@ -207,7 +218,8 @@ One source's failure never stops the run. Failures go to
 5. Run the contradiction check (§6) for every new central claim.
 6. Update design-layer `derives_from` / `precedents` where the source bears on
    them, and changelog entries per §7.
-7. Update catalogs and the router, append to `log.md`, commit.
+7. Run `wiki-links` and `wiki-index`, curate the router if a new hub page
+   deserves a place there, append to `log.md`, commit.
 
 ### `/query <question>`
 
